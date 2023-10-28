@@ -3,13 +3,42 @@ import {View, Text, TextInput, Button} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Table, Row, Cell} from 'react-native-table-component';
 import XLSX from 'xlsx';
+import {PermissionsAndroid} from 'react-native';
 import RNFS from 'react-native-fs';
-
+import RNFetchBlob from 'rn-fetch-blob';
 const NUM_ROWS = 10;
 const NUM_COLUMNS = 5;
 
 export default function App() {
-  const [data, setData] = useState([]);
+  async function requestStoragePermission() {
+    console.log('====================================');
+    console.log('dsfsdf');
+    console.log('====================================');
+    try {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+        {
+          title: 'Storage Permission',
+          message: 'App needs access to storage for file download.',
+        },
+      );
+      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+        // Permission granted, you can proceed with the file operation
+        handleDownload();
+      } else {
+        handleDownload();
+        // Permission denied, handle it gracefully
+        console.log('====================================');
+        console.log('dsfdsfsf');
+        console.log('====================================');
+      }
+    } catch (err) {
+      console.log('uyety');
+      console.warn(err);
+    }
+  }
+
+  const [data, setData] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -48,54 +77,45 @@ export default function App() {
       console.error('Error saving data to AsyncStorage:', error);
     }
   };
+
   const handleDownload = async () => {
-    const ws = XLSX.utils.aoa_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
-
-    const wbout = XLSX.write(wb, {bookType: 'xlsx', type: 'binary'});
-
-    const filePath = RNFS.DocumentDirectoryPath + '/ExcelFile.xlsx';
-    await RNFS.writeFile(filePath, wbout, 'ascii');
-
     try {
-      const url = `file://${filePath}`;
-      await RNFS.downloadFile({
-        fromUrl: url,
-        toFile: RNFS.ExternalStorageDirectoryPath + '/ExcelFile.xlsx',
-      });
+      const targetFilePath = RNFS.DownloadDirectoryPath + `/TextFile.txt`;
+      await RNFS.writeFile(targetFilePath, data, 'utf8');
+      console.log('Text file saved successfully');
     } catch (error) {
-      console.error('Error opening the file:', error);
+      console.error('Error saving text file:', error);
     }
   };
+
   return (
     <View>
       <Table borderStyle={{borderWidth: 1, borderColor: '#C1C0B9'}}>
         <Row
-          data={Array(NUM_COLUMNS)
-            .fill(0)
-            .map((_, colIndex) => `Column ${colIndex + 1}`)}
+          data={['A', 'B', 'C', 'D', 'E']}
           style={styles.head}
-          textStyle={styles.text}
+          textStyle={{color: 'black', margin: 6}}
         />
+
         {Array.from({length: NUM_ROWS}).map((_, rowIndex) => (
           <Row
             key={rowIndex}
             data={Array.from({length: NUM_COLUMNS}).map((_, colIndex) => (
-              <TextInput
-                key={colIndex}
-                value={data[rowIndex] ? data[rowIndex][colIndex] : ''}
-                onChangeText={text =>
-                  handleCellChange(rowIndex, colIndex, text)
-                }
-              />
+              <View key={colIndex}>
+                <TextInput
+                  style={styles.text}
+                  value={data[rowIndex] ? data[rowIndex][colIndex] : ''}
+                  onChangeText={text =>
+                    handleCellChange(rowIndex, colIndex, text)
+                  }
+                />
+              </View>
             ))}
             style={styles.row}
-            textStyle={styles.text}
-          />
+            textStyle={{color: 'black', margin: 6}}></Row>
         ))}
       </Table>
-      <Button title="Download" onPress={handleDownload} />
+      <Button title="Download" onPress={requestStoragePermission} />
     </View>
   );
 }
@@ -111,6 +131,7 @@ const styles = {
     backgroundColor: '#f1f8ff',
   },
   text: {
+    color: 'black',
     margin: 6,
   },
   row: {
